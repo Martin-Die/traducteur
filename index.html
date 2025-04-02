@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traducteur Optimisé Texte ↔ Brainfuck</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .converter-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .converter-box {
+            flex: 1;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+            font-family: monospace;
+        }
+
+        .arrow {
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+        }
+
+        .info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+
+        .copy-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .copy-btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Traducteur Optimisé Texte ↔ Brainfuck</h1>
+
+    <div class="converter-container">
+        <div class="converter-box">
+            <label for="inputText">Texte normal :</label>
+            <textarea id="inputText" placeholder="Entrez du texte ici..."></textarea>
+            <button class="copy-btn" onclick="copyToClipboard('inputText')">Copier le texte</button>
+        </div>
+
+        <div class="arrow">↔</div>
+
+        <div class="converter-box">
+            <label for="outputBrainfuck">Code Brainfuck :</label>
+            <textarea id="outputBrainfuck" placeholder="Le code Brainfuck optimisé apparaîtra ici..."></textarea>
+            <button class="copy-btn" onclick="copyToClipboard('outputBrainfuck')">Copier le code</button>
+        </div>
+    </div>
+
+    <div class="info">
+        <h3>Comment utiliser :</h3>
+        <ul>
+            <li>Écrivez dans la zone "Texte normal" pour générer automatiquement le code Brainfuck optimisé</li>
+            <li>Écrivez dans la zone "Code Brainfuck" pour voir le texte décodé</li>
+            <li>Le code généré utilise des boucles pour une meilleure optimisation</li>
+            <li>Exemple optimisé: 'A' (65) devient <code>+++++[>++++++++++<-]>+.</code> au lieu de 65 '+'</li>
+        </ul>
+    </div>
+
+    <script>
+        // Éléments DOM
+        const textInput = document.getElementById('inputText');
+        const bfInput = document.getElementById('outputBrainfuck');
+        let isUpdating = false;
+
+        // Événements
+        textInput.addEventListener('input', updateBrainfuck);
+        bfInput.addEventListener('input', updateText);
+
+        function updateBrainfuck() {
+            if (isUpdating) return;
+            isUpdating = true;
+
+            const text = textInput.value;
+            bfInput.value = text === '' ? '' : optimizedTextToBrainfuck(text);
+
+            isUpdating = false;
+        }
+
+        function updateText() {
+            if (isUpdating) return;
+            isUpdating = true;
+
+            const bfCode = bfInput.value;
+            textInput.value = bfCode === '' ? '' : brainfuckToText(bfCode);
+
+            isUpdating = false;
+        }
+
+        function optimizedTextToBrainfuck(text) {
+            let result = '';
+            let currentValue = 0;
+
+            for (let i = 0; i < text.length; i++) {
+                const charCode = text.charCodeAt(i);
+                const diff = charCode - currentValue;
+
+                // Trouver la meilleure méthode
+                const methods = [
+                    simpleMethod(diff),
+                    loopMethod(charCode),
+                    resetMethod(charCode)
+                ];
+
+                // Choisir la méthode la plus courte
+                const bestMethod = methods.reduce((a, b) =>
+                    a.code.length < b.code.length ? a : b);
+
+                result += bestMethod.code;
+                currentValue = bestMethod.newValue;
+            }
+
+            return result;
+        }
+
+        function simpleMethod(diff) {
+            const code = diff > 0 ? '+'.repeat(diff) : '-'.repeat(-diff);
+            return {
+                code: code + '.',
+                newValue: diff > 0 ? diff : -diff
+            };
+        }
+
+        function loopMethod(target) {
+            if (target < 10) return { code: '', newValue: 0 }; // Pas efficace pour petits nombres
+
+            // Trouver le meilleur multiplicateur (entre 2 et 20)
+            let bestLength = Infinity;
+            let bestCode = '';
+
+            for (let m = 2; m <= Math.min(20, target); m++) {
+                const q = Math.floor(target / m);
+                const r = target % m;
+
+                const code = `[-]>${'+'.repeat(m)}[<${'+'.repeat(q)}>-]<${'+'.repeat(r)}.`;
+                if (code.length < bestLength) {
+                    bestLength = code.length;
+                    bestCode = code;
+                }
+            }
+
+            return {
+                code: bestCode,
+                newValue: target
+            };
+        }
+
+        function resetMethod(target) {
+            return {
+                code: '[-]' + '+'.repeat(target) + '.',
+                newValue: target
+            };
+        }
+
+        function brainfuckToText(bfCode) {
+            let output = '';
+            const memory = new Uint8Array(30000);
+            let pointer = 0;
+            let loopStack = [];
+            let i = 0;
+
+            const cleanCode = bfCode.replace(/[^><+\-.,[\]]/g, '');
+
+            while (i < cleanCode.length) {
+                const cmd = cleanCode[i];
+
+                switch (cmd) {
+                    case '>': pointer++; break;
+                    case '<': pointer = Math.max(0, pointer - 1); break;
+                    case '+': memory[pointer]++; break;
+                    case '-': memory[pointer]--; break;
+                    case '.': output += String.fromCharCode(memory[pointer]); break;
+                    case '[':
+                        if (memory[pointer] === 0) {
+                            let depth = 1;
+                            while (depth > 0 && ++i < cleanCode.length) {
+                                if (cleanCode[i] === '[') depth++;
+                                if (cleanCode[i] === ']') depth--;
+                            }
+                        } else {
+                            loopStack.push(i);
+                        }
+                        break;
+                    case ']':
+                        if (memory[pointer] !== 0) {
+                            i = loopStack[loopStack.length - 1];
+                        } else {
+                            loopStack.pop();
+                        }
+                        break;
+                }
+                i++;
+            }
+
+            return output || "(Aucun caractère imprimé)";
+        }
+
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            element.select();
+            document.execCommand('copy');
+
+            const btn = element.nextElementSibling;
+            const originalText = btn.textContent;
+            btn.textContent = 'Copié !';
+            setTimeout(() => btn.textContent = originalText, 2000);
+        }
+    </script>
+</body>
+
+</html>
