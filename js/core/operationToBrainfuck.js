@@ -1,127 +1,115 @@
 import { ERROR_MESSAGES, REGEX } from '../utils/constants.js';
+import * as operations from './operations/index.js';
 
 /**
  * Convertit une opération mathématique en code Brainfuck
  * @param {string} operation - L'opération à convertir
- * @returns {string} Le code Brainfuck correspondant
+ * @returns {string} Le code Brainfuck correspondant ou un message d'erreur
  */
 export function convertOperationToBrainfuck(operation) {
-    // Normaliser l'entrée
+    // Normalisation et validation
     operation = operation.replace(/\s+/g, '').toLowerCase();
-
-    // Valider la syntaxe
     if (!REGEX.VALID_CHARACTERS.test(operation.replace(REGEX.SQUARE_OPERATOR, ''))) {
         return ERROR_MESSAGES.INVALID_CHARACTERS;
     }
-
-    // Vérifier la structure des **
-    if (operation.includes('***') || /^\*\*/.test(operation) || /\*\*$/.test(operation)) {
+    if (operation.includes('***') || operation.startsWith('**') || operation.endsWith('**')) {
         return ERROR_MESSAGES.INVALID_SQUARE_SYNTAX;
     }
 
-    // Vérifier les parenthèses
-    let parenthesesCount = 0;
+    // Validation des parenthèses
+    let stack = [];
     for (let char of operation) {
-        if (char === '(') parenthesesCount++;
-        if (char === ')') parenthesesCount--;
-        if (parenthesesCount < 0) return ERROR_MESSAGES.INVALID_PARENTHESES;
+        if (char === '(') stack.push(char);
+        else if (char === ')') {
+            if (stack.pop() !== '(') return ERROR_MESSAGES.INVALID_PARENTHESES;
+        }
     }
-    if (parenthesesCount !== 0) return ERROR_MESSAGES.INVALID_PARENTHESES;
+    if (stack.length !== 0) return ERROR_MESSAGES.INVALID_PARENTHESES;
 
     let brainfuckCode = "";
-    let cellCount = 0;
-    let cells = [];
-    let i = 0;
-    let tempCells = [];
+    let cellPointer = 0;
+    let stackFrames = [];
 
-    while (i < operation.length) {
+    for (let i = 0; i < operation.length; i++) {
         const char = operation[i];
 
         if (char === '(') {
-            // Sauvegarder l'état actuel
-            tempCells.push({ cells: [...cells], cellCount, brainfuckCode });
-            cells = [];
-            cellCount = 0;
+            stackFrames.push({ brainfuckCode, cellPointer });
             brainfuckCode = "";
-            i++;
+            cellPointer = 0;
             continue;
         }
 
         if (char === ')') {
-            if (tempCells.length === 0) return ERROR_MESSAGES.INVALID_PARENTHESES;
-            const savedState = tempCells.pop();
-            // Fusionner les résultats
-            brainfuckCode = savedState.brainfuckCode + brainfuckCode;
-            cells = [...savedState.cells, ...cells];
-            cellCount = savedState.cellCount + cellCount;
-            i++;
+            if (stackFrames.length === 0) return ERROR_MESSAGES.INVALID_PARENTHESES;
+            const frame = stackFrames.pop();
+            brainfuckCode = frame.brainfuckCode + brainfuckCode;
+            cellPointer = frame.cellPointer;
             continue;
         }
 
         if (REGEX.DIGITS.test(char)) {
-            // Gestion optimisée des grands nombres
-            let value = parseInt(char);
+            let numStr = char;
             while (i + 1 < operation.length && REGEX.DIGITS.test(operation[i + 1])) {
-                value = value * 10 + parseInt(operation[++i]);
+                numStr += operation[++i];
             }
+            const value = parseInt(numStr);
 
-            // Optimisation pour les grands nombres
-            if (value > 20) {
-                const factor = Math.floor(Math.sqrt(value));
-                const remainder = value - (factor * factor);
-                brainfuckCode += "+".repeat(factor) + "[>" + "+".repeat(factor) + "<-]";
-                if (remainder > 0) {
-                    brainfuckCode += "+".repeat(remainder);
-                }
-            } else {
-                brainfuckCode += "+".repeat(value);
-            }
+            // Placer le nombre dans la cellule actuelle
+            brainfuckCode += "+".repeat(value);
 
-            cells.push(value);
-            cellCount++;
-
+            // Si ce n'est pas une exponentiation, passer à la cellule suivante
             if (!(i + 2 <= operation.length && operation.substr(i + 1, 2) === "**")) {
                 brainfuckCode += ">";
+                cellPointer++;
             }
-            i++;
+            continue;
         }
-        else if (char === '*' && i + 1 < operation.length && operation[i + 1] === '*') {
-            if (cells.length < 1) return ERROR_MESSAGES.NOTHING_TO_SQUARE;
 
-            // Simplification de l'opération de carré
-            brainfuckCode += "[->+>+<<]>>[-<<+>>]<"; // Dupliquer la valeur
-            brainfuckCode += "[->[->+>+<<]>>[-<<+>>]<<<]>[-]>[-<<+>>]<<"; // Multiplier
-            cellCount += 2;
+        if (char === '*' && i + 1 < operation.length && operation[i + 1] === '*') {
+            let exponentStr = '';
             i += 2;
-        }
-        else {
-            switch (char) {
-                case '+':
-                    brainfuckCode += "[-<+>]<";
-                    cellCount--;
-                    break;
-                case '-':
-                    brainfuckCode += "[-<->]<";
-                    cellCount--;
-                    break;
-                case '*':
-                    brainfuckCode += "[->[->+>+<<]>>[-<<+>>]<<<]>[-]>[-<<+>>]<<";
-                    cellCount += 2;
-                    break;
-                case '/':
-                    // Division optimisée
-                    brainfuckCode += "[->-[>+>>]>[+[-<+>]>+>>]<<<<<]>>>>[-<<<<+>>>>]<<";
-                    cellCount += 3;
-                    break;
+            while (i < operation.length && REGEX.DIGITS.test(operation[i])) {
+                exponentStr += operation[i++];
             }
-            i++;
+            i--;
+
+            const exponent = parseInt(exponentStr);
+            if (isNaN(exponent)) return ERROR_MESSAGES.INVALID_EXPONENT;
+
+            // Pour l'exponentiation, nous ne voulons pas avancer le pointeur
+            // car nous allons utiliser les cellules suivantes pour le calcul
+            brainfuckCode += operations.convertExponentiation(exponent);
+            continue;
+        }
+
+        switch (char) {
+            case '+': 
+                brainfuckCode += operations.convertAddition();
+                break;
+            case '-': 
+                brainfuckCode += operations.convertSoustraction();
+                break;
+            case '*': 
+                brainfuckCode += operations.convertMultiplication();
+                cellPointer++;
+                break;
+            case '/': 
+                brainfuckCode += operations.convertDivision();
+                cellPointer += 2;
+                break;
+            default: 
+                return ERROR_MESSAGES.INVALID_CHARACTERS;
         }
     }
 
-    if (cellCount > 0) {
-        brainfuckCode += "<".repeat(cellCount - 1);
+    // Retourner au début de la mémoire
+    if (cellPointer > 0) {
+        brainfuckCode += "<".repeat(cellPointer);
     }
+    
+    // Afficher le résultat
     brainfuckCode += ".";
-
+    
     return brainfuckCode;
-} 
+}
