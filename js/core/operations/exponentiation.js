@@ -5,22 +5,21 @@
  */
 export function convertExponentiation(exponent) {
     if (exponent === 0) {
-        return "[-]+"; // Retourne 1 si l'exposant est 0
+        return "[-]+"; // 1 dans la cellule 0
     }
 
-    let brainfuckCode = "";
-    
-    // Copier la base dans deux cellules temporaires
-    brainfuckCode += "[->+>+<<]"; // Copier dans les deux cellules suivantes
-    brainfuckCode += ">>[-<<+>>]"; // Restaurer la base
-    brainfuckCode += "<"; // Revenir à la première copie
-    
-    // Effectuer l'exponentiation
+    let code = "";
+
+    // Copie de la base (cell0) vers cell1
+    code += ">[-]>>[-]<<<";  // Initialise cell1 et cell2 à 0
+    code += "[->+>+<<]";     // Duplique cell0 vers cell1 et cell2
+    code += ">>[-<<+>>]<<"; // Restaure cell0 depuis cell2
+
+    // Multiplication itérative
     for (let i = 1; i < exponent; i++) {
-        // Multiplier la valeur actuelle par la base
-        brainfuckCode += "[->[->+>+<<]>>[-<<+>>]<<<]"; // Multiplication
-        brainfuckCode += ">[-]>[-<<+>>]<<"; // Nettoyage et restauration
+        code += "[->[->+>+<<]>>[-<<+>>]<<<]"; // Multiplie cell0 * cell1 → cell2
+        code += ">>[-<<+>>]<<";               // Transfère cell2 → cell0
     }
-    
-    return brainfuckCode;
-} 
+
+    return code;
+}
