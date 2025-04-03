@@ -16,14 +16,25 @@ export function setupEventHandlers() {
     copyBrainfuckBtn.addEventListener('click', () => copyToClipboard('outputBrainfuck'));
 }
 
-function updateBrainfuck() {
+async function updateBrainfuck() {
     if (isUpdating) return;
     isUpdating = true;
 
     const text = document.getElementById('inputText').value;
-    document.getElementById('outputBrainfuck').value = text === '' ? '' : optimizedTextToBrainfuck(text);
+    if (text === '') {
+        document.getElementById('outputBrainfuck').value = '';
+        isUpdating = false;
+        return;
+    }
 
-    isUpdating = false;
+    try {
+        const brainfuckCode = await optimizedTextToBrainfuck(text);
+        document.getElementById('outputBrainfuck').value = brainfuckCode;
+    } catch (error) {
+        console.error('Erreur lors de la génération du code Brainfuck:', error);
+    } finally {
+        isUpdating = false;
+    }
 }
 
 function updateText() {
