@@ -1,6 +1,6 @@
-import { optimizedTextToBrainfuck } from './textToBrainfuck.js';
-import { brainfuckToText } from './brainfuckToText.js';
-import { copyToClipboard } from './utils.js';
+import { optimizedTextToBrainfuck } from './core/textToBrainfuck.js';
+import { brainfuckToText } from './core/brainfuckToText.js';
+import { copyToClipboard } from './utils/utils.js';
 
 let isUpdating = false;
 

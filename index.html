@@ -27,6 +27,23 @@
         </div>
     </div>
 
+    <h2>Traducteur d'Opérations Mathématiques</h2>
+    <div class="converter-container">
+        <div class="converter-box">
+            <label for="inputOperation">Opération mathématique :</label>
+            <textarea id="inputOperation" placeholder="Entrez une opération (ex: 2+2)..."></textarea>
+            <button class="copy-btn" id="copyOperationBtn">Copier l'opération</button>
+        </div>
+
+        <div class="arrow">↔</div>
+
+        <div class="converter-box">
+            <label for="outputOperationBrainfuck">Code Brainfuck :</label>
+            <textarea id="outputOperationBrainfuck" placeholder="Le code Brainfuck de l'opération apparaîtra ici..."></textarea>
+            <button class="copy-btn" id="copyOperationBrainfuckBtn">Copier le code</button>
+        </div>
+    </div>
+
     <div class="info">
         <h3>Comment utiliser le traducteur</h3>
         <ul>
@@ -42,6 +59,13 @@
                     <li>Collez votre code Brainfuck dans la zone "Code Brainfuck"</li>
                     <li>Le texte décodé apparaîtra automatiquement</li>
                     <li>Utilisez le bouton "Copier le texte" pour copier le résultat</li>
+                </ul>
+            </li>
+            <li><strong>Traducteur d'Opérations :</strong>
+                <ul>
+                    <li>Entrez une opération mathématique simple (+, -, *, /)</li>
+                    <li>Le code Brainfuck correspondant sera généré</li>
+                    <li>Vous pouvez aussi convertir du Brainfuck en opération</li>
                 </ul>
             </li>
             <li><strong>Optimisations :</strong>
